@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Force Layout Example 1</title>	
+<style>
+
+
+.allnodes circle {
+	/*stroke: #fff;
+	stroke-width: 1.5px;*/
+}
+
+.iidcircle  {
+	stroke: grey;
+	stroke-width: 0.5px;
+}
+
+.nodetext{
+	font-size: 50%;
+}
+
+#flexcontainer0 {
+	
+	display: flex;	
+	flex-direction: row;
+	flex-wrap: nowrap;
+}
+
+#flexcontainer1 {
+	
+	min-width: 200px;
+	/*display: flex;	
+	flex-direction: column;
+	flex-wrap: nowrap;*/
+}
+
+#flexcontainer2 {
+	
+	display: flex;	
+	flex-direction: column;
+}
+
+.flexelement {
+	border : solid;
+	border-width: 1px;
+	border-radius : 25px;
+	border-color : grey;
+	padding: 10px;
+}
+
+#textname2, #textname3 {
+	font-size: 100%;
+}
+
+img {
+	margin-left: 5px;
+	margin-right: 5px;
+}
+
+label {
+	font-size: 100%;
+}
+
+#flexcontainer1 div {
+	margin: 5px;
+}
+
+#flexcontainer2 div {
+	margin: 0px;
+}
+
+ul {
+	margin: 0px;
+	padding: 10px;
+}
+input {
+	margin: 0 auto;
+	display: inline-block;
+}
+button {
+	display: block;
+	margin: 10px auto;
+	padding: 10px;
+	border-radius: 8px;
+	text-decoration: none;
+	background-color: #555555;
+	color: white;
+	border: none;
+}
+
+h4 {
+	text-align: center;
+	margin: 0px;	
+}
+
+p {
+	margin: 0px;
+}
+
+</style>
+
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.3.0/d3.min.js"></script>
+
+<script>
+
+var dataset = "books3.json";
+
+
+var linkupd, groupnodeenter, groupnode, pathupd;
+var initlinks = [];
+var initdetlinks = [];
+var viznodes = [];
+var vizlinksdetails = [];
+var nodeslinksrange = [4, 15];
+var nodesradiusrange = [8, 35];
+var nodesradiusonhover = 60;
+var labelopacity_off = 0.4;
+var labelopacity_on = 1;
+var start_nb = 0;
+var linkvalue = 500;
+var paramlinklabel = 0;
+var iidvalue = ['All institutions']
+var publivalue = ['All publishers']
+var tooltip_opacity_vis = 1;
+var tooltip_opacity_invis = 0;
+var trans = d3.transition().duration(2000);
+var coverwidth = 100;
+var coverheight = 100;
+var spacebtw2covers = 80;
+var cover_y = 5;
+var forcestrength;
+var nblogostoshow = 15;
+var minlinkvaluewithall = 200;
+var tempnodesize = 3;
+var rrangemin = 3;
+var delayweight = 4;
+var rlegend = 5;
+var upperspace = 80;
+var graphpartofthescreen = (2/3);
+var subgraphpartofthescreen = 1 - graphpartofthescreen;
+var spacebtwsubandgraph = 20;
+
+var flexcontainer0 = d3
+	.select('body')
+	.append('div')
+	.attr('id', 'flexcontainer0');
+	//.style('text-align', 'center');
+
+var flexcontainer1 = flexcontainer0
+	.append('div')
+	.attr('id', 'flexcontainer1')
+	//.style('text-align', 'center')
+	.style('flex-grow', '1');
+
+var flexcontainer2 = flexcontainer0
+	.append('div')
+	.attr('id', 'flexcontainer2')
+	.style('flex-grow', '4');
+	//.style('text-align', 'left');
+
+flexcontainer1
+	.append('div')
+	.attr('class', 'flexelement')
+	.attr('id', 'info')
+	.append('h4')
+	.text('Info');
+
+d3	
+	.select('#info')
+	.append('p')
+	.append('span')
+	.text('Publishers: ')
+	.append('span')
+	.attr('id', 'textname0');
+
+d3	
+	.select('#info')
+	.append('p')
+	.append('span')
+	.text('Institutions: ')
+	.append('span')
+	.attr('id', 'textname1');
+
+d3	
+	.select('#info')
+	.append('p')
+	.append('span')
+	.text('Country: ')
+	.append('span')
+	.attr('id', 'textname11')
+	.text(' - ');
+
+d3	
+	.select('#info')
+	.append('p')
+	.append('span')
+	.text('People per doc: ')
+	.append('span')
+	.attr('id', 'textname2')
+	.text(' - ');
+
+d3	
+	.select('#info')
+	.append('p')
+	.append('span')
+	.text('Institutions per doc: ')
+	.append('span')
+	.attr('id', 'textname3')
+	.text(' - ');
+
+d3	
+	.select('#info')
+	.append('p')
+	.append('span')
+	.text('Documents per iid: ')
+	.append('span')
+	.attr('id', 'textname4')
+	.text(' - ');
+
+flexcontainer1
+	.append('div')
+	.attr('class', 'flexelement')
+	.attr('id', 'sortiid')
+	.append('h4')
+	.text('Sort iid by');
+
+d3
+	.select('#sortiid')
+	.append('button')
+	.attr('id', 'sortcountry')
+	.text('Country');
+
+d3
+	.select('#sortiid')
+	.append('button')
+	.attr('id', 'sortnbdocperiid')
+	.text('Nb doc per iid');
+
+flexcontainer1
+	.append('div')
+	.attr('class', 'flexelement')
+	.attr('id', 'sortbooks')
+	.append('h4')
+	.text('Sort books by');
+
+d3
+	.select('#sortbooks')
+	.append('button')
+	.attr('id', 'sortpublishers')
+	.text('Publisher');
+
+d3
+	.select('#sortbooks')
+	.append('button')
+	.attr('id', 'sortnbpeopleperdocid')
+	.text('Nb people by doc');
+
+//FILTERS
+flexcontainer1
+	.append('div')
+	.attr('class', 'flexelement')
+	.attr('id', 'filters')
+	.append('h4')
+	.text('Filters');
+d3
+	.select('#filters')
+	.append('input')
+	.attr('id', 'publiselection')
+	.attr('list', 'publilist')
+	.attr('placeholder', 'PUBLISHERS');
+d3
+	.select('#filters')
+	.append('datalist') //The datalist tag is not supported in Safari or IE9 (and earlier).
+	.attr('id', 'publilist');
+d3
+	.select('#filters')
+	.append('input')
+	.attr('id', 'publinput')
+	.attr('type', "submit")
+	.attr('value', 'OK');
+d3
+	.select('#filters')
+	.append('span')
+	.html('<br>');
+d3
+	.select('#filters')
+	.append('input')
+	.attr('id', 'iidselection')
+	.attr('list', 'iidlist')
+	.attr('placeholder', 'INSTITUTIONS');
+d3
+	.select('#filters')
+	.append('datalist') //The datalist tag is not supported in Safari or IE9 (and earlier).
+	.attr('id', 'iidlist');
+d3
+	.select('#filters')
+	.append('input')
+	.attr('id', 'iidinput')
+	.attr('type', "submit")
+	.attr('value', 'OK');
+
+//SVG
+flexcontainer2
+	.append('div')
+	.attr('id', 'graph');
+
+// VARIABLES BASED ON WEIGHT AND HEIGHT
+var margin = {top: nodesradiusonhover, right: nodesradiusonhover, bottom: nodesradiusonhover, left: nodesradiusonhover};
+var width = parseInt(d3.select('#graph').style('width'), 10)
+var	height = 600;
+var xrange = [0, width];
+var yrange = [height, 0];
+
+svgcontainer = d3
+	.select('#graph')
+	.append('svg')
+	.attr('width', width + margin.left + margin.right)
+	.attr('height', height + margin.top + margin.bottom + nodesradiusonhover);
+
+svgcontainer
+	.append('g')
+	.attr('id', 'svgsubgraph')
+	.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+svgcontainer
+	.append('g')
+	.attr('id', 'svggraph')
+    .attr("transform", "translate(" + margin.left + "," + (margin.top + height * subgraphpartofthescreen + nodesradiusonhover) + ")");
+
+var subsvg = d3
+	.select('#svgsubgraph');
+
+subsvg
+	.append('g')
+	.attr('class', 'alliidpatterns');
+
+subsvg
+	.append('g')
+	.attr('class', 'alliidcircles');
+
+var svg = d3
+	.select("#svggraph");
+
+svg
+	.append("g")
+	.attr("class", "allnodes");
+svg
+	.append("g")
+	.attr("class", "allcovers");
+	
+svg
+	.append("g")
+	.attr("class", "alltextnodes");
+
+// MOVE TO FRONT: http://stackoverflow.com/questions/14167863/how-can-i-bring-a-circle-to-the-front-with-d3
+/*d3.selection.prototype.moveToFront = function() {
+  return this.each(function(){
+    this.parentNode.appendChild(this);
+  });
+};*/
+
+var simulationsub = d3
+	.forceSimulation()
+	.force("collide",d3
+		.forceCollide( function(d) { return d.nodesize + 2; } )
+		.strength(.8)
+		.iterations(1))
+	.force("x", d3
+		.forceX()
+			.x(function(d, i){ return (i % nbpointsparlignesub) * espaceparpointsub; })
+			.strength(.20))
+	.force("y", d3
+		.forceY()
+			.y(function(d, i){ return (Math.floor(i / nbpointsparlignesub) * espaceparpointsub); })
+			.strength(.20))
+	.alphaMin(.05)
+	.alphaDecay(.05);
+
+var simulationgraph = d3
+	.forceSimulation()
+/*	.force("charge", d3
+			.forceManyBody()
+			//.distanceMax(400)
+			.strength(function(d){ return -1; }) )
+	.force("center", d3.forceCenter(width / 2, height / 2))
+*/	.force("collide",d3
+		.forceCollide( function(d) { return d.nodesize + 2; } )
+		.strength(.8)
+		.iterations(1))
+	.force("x", d3
+		.forceX()
+			.x(function(d, i){ return (i % nbpointsparlignegraph) * espaceparpointgraph; })
+			.strength(.20))
+	.force("y", d3
+		.forceY()
+			.y(function(d, i){ return (Math.floor(i / nbpointsparlignegraph) * espaceparpointgraph) ; }) //+ (height * subgraphpartofthescreen) + spacebtwsubandgraph
+			.strength(.20))
+	.alphaMin(.05)
+	.alphaDecay(.05);
+
+function updatesub(data) {
+
+	instit = subsvg
+		.select('.alliidcircles')
+		.selectAll('.iidcircle')
+		.data(viziid, function(d){ return 'id' + d.iid; });
+
+	instit.exit().remove();
+
+	institupd = instit
+		.enter()
+		.append('circle')
+		.attr('class', 'iidcircle')
+		.merge(instit)
+		.style('fill', function(e){ return 'url(#' + 'id' + e.iid + ')'; })
+		.attr("r", function(e) { return e.nodesize; })
+		.on('mouseover', function(d){
+			var toshow = [];
+
+			data.map(function(u){ if (u.iid == d.iid) { toshow.push(u.docid.toString()); }; });
+			viznodes.sort(
+				function(a, b){
+					if (toshow.includes(a.docid.toString()) == toshow.includes(b.docid.toString())) {
+						return d3.descending(a.nbpeopleperdocid, b.nbpeopleperdocid);
+					} else {
+						return d3.descending( toshow.includes(a.docid.toString()), toshow.includes(b.docid.toString()) );
+					}
+			});
+
+			d3
+				.selectAll('.onenode')
+				.filter(function(e){ return toshow.includes(e.docid.toString()); })
+				.attr('fill', 'green');
+
+			d3
+				.selectAll('.onenode')
+				.filter(function(e){ return !toshow.includes(e.docid.toString()); })
+				.attr('fill', 'red');
+
+			simulationgraph.nodes(viznodes).alpha(1).restart();			
+
+			d3
+				.select(this)
+				.attr('r', function(e){ e.nodesize = nodesradiusonhover; return e.nodesize; });
+			simulationsub.nodes(viziid).alpha(0.3).restart();
+
+			d3
+				.select('#textname1')
+				.text(d.institution);
+			d3
+				.select('#textname11')
+				.text(d.countrycode);
+
+			d3
+				.select('#textname4')
+				.text(start_nb)
+				.transition()
+				.duration(500)
+				//Taken from Bostock's "Text Transition I" - Used for animating the nb of shared books.
+				.tween("text", function() {
+					var that = d3.select(this);
+					var i = d3.interpolateNumber(start_nb, d.nbdocidperiid);
+					return function(t) {
+						that.text(Math.round(i(t)));
+					};
+				});			
+		})
+		.on('mouseout', function(d){
+			d3
+				.selectAll('.onenode')
+				.attr("fill", function(d) { return color(d[colorfield]); });
+
+			d3
+				.select(this)
+				.attr("r", function(e) { e.nodesize = rscalesub(e.nbdocidperiid); return e.nodesize; });
+			simulationsub.nodes(viziid).alpha(0.3).restart();
+
+			d3
+				.select('#textname1')
+				.text(iidvalue);	
+
+			d3
+				.select('#textname11')
+				.text('-');
+
+			d3
+				.select('#textname4')
+				.text('-');
+		});
+
+	simulationsub
+		.nodes(viziid)
+		.on("tick", tickedsub);
+};
+
+function update(data) {
+	// PRINT THE LISTS
+	d3
+		.select('#publilist')
+		.selectAll('option')
+		.data(allpubli)
+		.enter()
+		.append('option')
+		.attr('value', function(d){ return d.key + ' (' + d.value + ')'; });
+	d3
+		.select('#iidlist')
+		.selectAll('option')
+		.data(alliid)
+		.enter()
+		.append('option')
+		.attr('value', function(d){ return d.key + ' (' + d.value + ')'; });
+
+	// NODES
+	groupnode = svg
+		.select(".allnodes")
+		.selectAll(".onenode")
+		.data(viznodes, function(d){ return 'id' + d.docid; });
+
+	groupnode.exit().remove();
+
+	groupnodeupd = groupnode
+		.enter()
+		.append("circle")
+		.attr("class", "onenode")
+		.merge(groupnode)
+		.attr("r", function(e) { return e.nodesize; })		
+		.attr("fill", function(d) { return color(d[colorfield]); })
+		.on("mouseover", function(d){
+			var toshow = [];
+			data.map(function(u){ if (u.docid == d.docid) { toshow.push({iid: u.iid.toString(), weight: u.nbpeopleperdocidandiid}); }; });
+			
+			viziid.map(function(e){
+				if (toshow.map(function(t){ return t.iid; }).includes(e.iid)){
+					toshow.map(function(r){
+						if(r.iid == e.iid){ e.nbpeopleperdocidandiid = r.weight; }
+					})
+				} else { e.nbpeopleperdocidandiid = 0; }	
+			});
+
+			viziid.sort(function(a, b){	return d3.descending(a.nbpeopleperdocidandiid, b.nbpeopleperdocidandiid); });
+			
+			d3
+				.selectAll('.iidcircle')
+				//.attr('r', function(e){ if(e.nbpeopleperdocidandiid == 0){ return 'red'; } else { return 'green'; }})
+				.style('stroke', function(e){ if(e.nbpeopleperdocidandiid == 0){ return 'red'; } else { return 'green'; }});
+				//.style('stroke-width', '1.5px');
+
+			/*viziid.sort(
+				function(a, b){
+					if (toshow.includes(a.iid) == toshow.includes(b.iid)) {
+						return d3.descending(Number(a.nbdocidperiid), Number(b.nbdocidperiid));
+					} else {
+						return d3.descending( toshow.includes(a.iid), toshow.includes(b.iid) );
+					}
+			});
+
+			d3
+				.selectAll('.iidcircle')
+				.filter(function(e){ return toshow.includes(e.iid); })
+				.style('stroke', 'green')
+				.style('stroke-width', '1.5px');
+
+			d3
+				.selectAll('.iidcircle')
+				.filter(function(e){ return !toshow.includes(e.iid); })
+				.style('stroke', 'red')
+				.style('stroke-width', '1.5px');*/
+
+			simulationsub.nodes(viziid).alpha(1).restart();
+
+			d3
+				.select(".allcovers pattern")
+				.remove();
+			
+			d3
+				.select('.allcovers')	
+				.append('pattern')
+				.attr('id', function(){ return 'id' + d.docid; })
+				.attr("width", 1)
+				.attr("height", 1)
+				.attr('patternContentUnits', 'objectBoundingBox')
+				.append('image')
+				.attr("xlink:href", d.cover_url)
+				.attr("width", 1)
+				.attr("height", 1)
+				.attr("x", 0)
+				.attr("y", 0)
+				.attr("preserveAspectRatio", "xMinYMin slice");
+			d3
+				.select('.alltextnodes')
+				.append('text')
+				.attr('class', "nodetext")				
+				.attr('text-anchor', "middle")
+				.style("opacity", labelopacity_off)
+				.style('font-size', '1%')
+				.style("pointer-events", "none")
+				.attr('dx', function(e){ return d.x; } )
+				.attr('dy', function(e){ return d.y +  nodesradiusonhover; } )
+				.transition()
+				.style('font-size', '120%')
+				.style("opacity", labelopacity_on)
+				.text(d.title);
+
+			d3
+				.select('#textname0')
+				.text(d.publishername);
+
+			d3
+				.select('#textname2')
+				.text(start_nb)
+				.transition()
+				.duration(500)
+				//Taken from Bostock's "Text Transition I" - Used for animating the nb of shared books.
+				.tween("text", function() {
+					var that = d3.select(this);
+					var i = d3.interpolateNumber(start_nb, d.nbpeopleperdocid);
+					return function(t) {
+						that.text(Math.round(i(t)));
+					};
+				});
+			d3
+				.select('#textname3')
+				.text(start_nb)
+				.transition()
+				.duration(500)
+				//Taken from Bostock's "Text Transition I" - Used for animating the nb of shared books.
+				.tween("text", function() {
+					var that = d3.select(this);
+					var i = d3.interpolateNumber(start_nb, d.nbiidperdocid);
+					return function(t) {
+						that.text(Math.round(i(t)));
+					};
+				});
+
+			/*d3
+				.select(this)
+				.moveToFront();*/
+			d3
+				.select(this)
+				//.attr(null, function(e){ e.nodesize = nodesradiusonhover; })
+				.style('fill', function(){ return 'url(#' + 'id' + d.docid + ')'; })
+				.attr("r", function(e){ e.nodesize = nodesradiusonhover; return nodesradiusonhover; });
+			// Restart the nodes' forces
+			simulationgraph.nodes(viznodes).alpha(0.3).restart();
+			
+		})
+		.on("mouseout", function(d){
+			d3
+				.selectAll('.iidcircle')
+				.style('stroke', 'grey')
+				.style('stroke-width', '0.5px');
+
+			d3
+				.select('.alltextnodes')
+				.select(".nodetext")
+				.remove();
+			d3
+				.select(this)
+				//.attr(null, function(e){ e.nodesize = rscalegraph(e[rdomainfield]); })
+				.style('fill', null)
+				.transition()
+				.attr("r", function(e) { e.nodesize = rscalegraph(e[rdomainfield]); return e.nodesize; });
+
+			simulationgraph.nodes(viznodes).alpha(0.3).restart();
+			
+			d3
+				.select('#textname0')
+				.text(publivalue);
+
+			d3
+				.select('#textname2')
+				.transition()
+				.text(' - ');
+			d3
+				.select('#textname3')
+				.transition()
+				.text(' - ');
+		})
+
+		/*.on("click", function(d){	})*/
+
+	//PARAM CONFIG
+	d3
+		.select('#sortcountry')
+		.on('click', function(){
+			//SORT
+			viziid.sort(function(a, b){ 
+				if(a.countrycode == b.countrycode){
+					return d3.descending(Number(a.nbdocidperiid), Number(b.nbdocidperiid));
+				} else { return d3.ascending(a.countrycode, b.countrycode); };
+			});
+			simulationsub.nodes(viziid).alpha(1).restart();
+		});
+
+	d3
+		.select('#sortnbdocperiid')
+		.on('click', function(){
+			//SORT
+			viziid.sort(function(a, b){ return d3.descending(Number(a.nbdocidperiid), Number(b.nbdocidperiid)); });
+			simulationsub.nodes(viziid).alpha(1).restart();
+		});
+
+	d3
+		.select('#sortpublishers')
+		.on('click', function(){
+			//SORT
+			var temp = d3
+				.nest()
+				.key(function(u) { return u.publishername; })
+				.entries(viznodes)
+				.sort(function(a, b){ return d3.descending(a.values.length, b.values.length); });
+			
+			viznodes = [];
+
+			temp.map(function(e){
+				e.values.sort(function(a, b){ return d3.descending(a.nbpeopleperdocid, b.nbpeopleperdocid); });
+			});
+
+			temp
+				.map(function(e){
+					e.values.map(function(u, i){
+						u.index = i;
+						viznodes.push( u );
+					})
+				});
+			//COLOR SCALE
+			colorfield = 'publishername';
+			color = colorpubli;
+			//UPDATE
+			d3
+				.selectAll('.onenode')
+				.attr('fill', function(e){ return color(e[colorfield]); });
+
+			simulationgraph.nodes(viznodes).alpha(1).restart();
+
+		});
+
+	d3
+		.select('#sortnbpeopleperdocid')
+		.on('click', function(){
+			//SORT
+			viznodes.sort(function(a,b){ return d3.descending(a.nbpeopleperdocid, b.nbpeopleperdocid); });
+			//COLOR SCALE
+			colorfield = 'nbpeopleperdocid';
+			color = colornbpeopleperdocid;
+			//console.log(temp.ticks());
+			//UPDATE
+			d3
+				.selectAll('.onenode')
+				.attr('fill', function(e){ return color(e[colorfield]); });
+
+			simulationgraph.nodes(viznodes).alpha(1).restart();
+		});
+
+	d3
+		.select('#publinput')
+		.on("click", function() {
+			publivalue = d3.select('#publiselection').node().value;
+			publivalue = publivalue.split(' (')[0];
+			
+			detail(data);
+			update(data);
+			simulationgraph.alpha(1).restart();
+		});
+
+	d3
+		.select('#iidinput')
+		.on("click", function() {
+			iidvalue = d3.select('#iidselection').node().value;
+			iidvalue = iidvalue.split(' (')[0];
+			detail(data);
+			update(data);			
+			simulationgraph.alpha(1).restart();
+		});
+
+	// RUN THE FORCES
+	simulationgraph
+		.nodes(viznodes)
+		.on("tick", tickedgraph);
+
+	// DELAYED TRANSITION
+	/*groupnodeupd
+		.transition()
+		.delay(function(e, i) {return (i * delayweight); })
+		.attr("r", function(e) { return e.nodesize; });*/
+
+	//simulationgraph.tick();
+
+};
+function tickedgraph() {
+	//var radius = tempnodesize;
+	//function xlim (a) { return Math.max(radius, Math.min(width - radius, a)); };
+	//function ylim(b) { return Math.max(radius + coverheight, Math.min(height - radius, b)); };
+
+	//console.log(simulationgraph.alpha());
+	groupnodeupd
+		.attr("cx", function(d) { return d.x; }) //xlim(d.x)
+		.attr("cy", function(d) { return d.y; }); //ylim(d.y)
+};
+
+function tickedsub() {
+	//console.log(simulationsub.alpha());
+	institupd
+		.attr("cx", function(d) { return d.x; })
+		.attr("cy", function(d) { return d.y; });
+};
+
+function detailsub(data){
+
+	// Only way I found to copy an array without leaving references 
+	copydata = JSON.parse(JSON.stringify(data));
+	viznodes = copydata.filter(function(e){ return true; });
+
+	//AGGREGATE THE IID		
+	viziid = d3
+		.nest()
+		.key(function(u) { return u.iid + "|" + u.institution + "|" + u.client + "|" + u.logo_url + "|" + u.nbdocidperiid + "|" + u.countrycode; })
+		.rollup(function(u){ return d3.sum(u, function(e){ return 1; }) })
+		.entries(viznodes);
+
+	viziid
+		.map(function(u) {
+			u.iid = u.key.split("|")[0];
+			u.institution = u.key.split("|")[1];
+			u.client = u.key.split("|")[2];
+			u.logo_url = u.key.split("|")[3];
+			u.nbdocidperiid = u.key.split("|")[4];
+			u.countrycode =  u.key.split("|")[5];
+			delete u.key;
+		});
+	
+	//INSTITUTIONS LOGO PATTERNS
+	subsvg
+		.select('.alliidpatterns')
+		.selectAll('.iidpattern')
+		.data(viziid, function(d){ return d.logo_url; })
+		.enter()
+		.append('pattern')
+		.attr('class', 'iidpattern')
+		.attr('id', function(e){ return 'id' + e.iid; })
+		.attr("width", 1)
+		.attr("height", 1)
+		.attr('patternContentUnits', 'objectBoundingBox')
+		.append('image')
+		.attr("xlink:href", function(e){ return 'http://' + e.logo_url; })
+		.attr("width", 1)
+		.attr("height", 1)
+		.attr("x", 0)
+		.attr("y", 0);
+		//.attr("preserveAspectRatio", "xMinYMin slice");	
+
+	// FORCES AND RADIUS UPDATE
+	// Formule de départ: (width * height)/(nb de points) = (espaceparpoint) au carré
+	espaceparpointsub = d3.min([Math.sqrt(width * height * subgraphpartofthescreen / viziid.length), nodesradiusonhover]);
+	nbpointsparlignesub = Math.floor((width) / espaceparpointsub);
+	rscalesub = d3.scaleLinear().range([espaceparpointsub/5, espaceparpointsub/3]).domain(d3.extent(viziid.map(function(e){ return e.nbdocidperiid; })));
+	
+	// ADD NODESIZE and SORT
+	viziid
+		.map(function(d) { 
+			d.nodesize = rscalesub(d.nbdocidperiid);
+			d.x = 0.5 * width;
+			d.y = 0.5 * espaceparpointsub * nbpointsparlignesub;
+		});
+	viziid.sort(function(a, b){ return d3.descending(a.nodesize, b.nodesize); });
+};
+
+function detail(data){
+	d3
+		.select('#textname0')
+		.text(publivalue);
+	d3
+		.select('#textname1')
+		.text(iidvalue);
+
+	// Only way I found to copy an array without leaving references 
+	copydata = JSON.parse(JSON.stringify(data));
+	viznodes = copydata.filter(function(e){ return true; });
+	
+	// Map each publisher to one color
+	colorfield = 'publishername';
+	var publisherstemp = d3.nest().key(function(e) { return e[colorfield]; }).sortKeys(d3.ascending).entries(copydata).map(function(e){ return e.key; });
+	colorpubli = d3.scaleOrdinal(d3.schemeCategory20).domain(publisherstemp);
+	colornbpeopleperdocid = d3.scaleQuantize().range(d3.schemeCategory10.slice(0, 5)).domain(d3.extent(copydata.map(function(e){ return e.nbpeopleperdocid; })));
+	color = colorpubli;
+
+	// INSTITUTIONS
+	alliid = d3
+		.nest()
+		.key(function(u) { return u.institution; })
+		.rollup(function(u){ return d3.sum(u, function(e){ return 1; }) })
+		.entries(viznodes)
+		.sort(function(a,b){ return d3.descending(a.value, b.value); }), function(d){ return d.key; };
+	alliid.splice(0, 0, {key: 'All institutions', value: d3.sum(alliid, function(e){ return e.value; })});
+
+	// AGGREGATE THE NODES
+	if (iidvalue == 'All institutions'){
+		viznodes = d3
+			.nest()
+			.key(function(u) { return u.docid + "|" + u.title + "|" + u.publishername + "|" + u.cover_url + "|" + u.nbpeopleperdocid + "|" + u.nbiidperdocid; })
+			.rollup(function(u){ return d3.sum(u, function(e){ return 1; }) })
+			.entries(viznodes);
+	
+	viznodes
+		.map(function(u) {
+			u.docid = u.key.split("|")[0];
+			u.title = u.key.split("|")[1];
+			u.publishername = u.key.split("|")[2];
+			u.cover_url = u.key.split("|")[3];
+			u.nbpeopleperdocid = u.key.split("|")[4];
+			u.nbiidperdocid =  u.key.split("|")[5];
+			delete u.key;
+		});
+	};
+
+	// PUBLISHERS
+	allpubli = d3
+		.nest()
+		.key(function(u) { return u.publishername; })
+		.rollup(function(u){ return d3.sum(u, function(e){ return 1; }) })
+		.entries(viznodes)
+		.sort(function(a,b){ return d3.descending(a.value, b.value); }), function(d){ return d.key; };
+	allpubli.splice(0, 0, {key: 'All publishers', value: d3.sum(allpubli, function(e){ return e.value; })});
+
+	// FILTER THE NODES
+	viznodes = viznodes.filter(function(e){ return publivalue == 'All publishers' || e.publishername == publivalue; });
+	viznodes = viznodes.filter(function(e){ return iidvalue == 'All institutions' || e.institution == iidvalue; });
+
+	// FORCES AND RADIUS UPDATE
+	// Formule de départ: (width * height)/(nb de points) = (espaceparpoint) au carré
+	espaceparpointgraph = d3.min([Math.sqrt(width * height * graphpartofthescreen / viznodes.length), nodesradiusonhover]); 
+	nbpointsparlignegraph = Math.floor((width) / espaceparpointgraph);
+
+	rdomainfield = 'nbpeopleperdocid';
+	rscalegraph = d3.scaleLinear().range([espaceparpointgraph/8, espaceparpointgraph/2]).domain(d3.extent(viznodes.map(function(e){ return e[rdomainfield]; })));
+	
+	// ADD NODESIZE (AND INITIAL POSITION)
+	viznodes
+		.map(function(d, i) {
+			d.nodesize = rscalegraph(d[rdomainfield]);
+			d.x = 0.5 * width;
+			d.y =  0.5 * nbpointsparlignegraph * espaceparpointgraph;
+		});
+};
+
+// READ THE GRAPH DATASET
+d3.json(dataset, function(error, data) {
+	if (error) return console.warn(error);
+	detailsub(data);
+	updatesub(data);
+	detail(data);
+	update(data);
+});
+
+
+</script>
+</body>
